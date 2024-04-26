@@ -7,9 +7,11 @@ sock.connect((esp32_address, port))
 
 def send_message(message):
     sock.send(message)
-    print("Message sent:", message)
+    print("Sent: {}".format(message))
+    response = sock.recv(1024)
+    print("Received: {}".format(response.decode('utf-8')))
 
 # send_message('ON')
-send_message('OFF')
+send_message('OFF xxx')
 
 sock.close()
