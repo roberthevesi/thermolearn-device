@@ -28,5 +28,6 @@ def get_current_day_and_time():
     
     day_of_week = current_datetime.strftime('%A').upper()
     current_time = current_datetime.strftime('%H:%M:%S')
+    current_date = current_datetime.strftime('%Y-%m-%d')
 
-    return day_of_week, current_time
+    return day_of_week, current_time, current_date
