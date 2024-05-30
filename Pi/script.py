@@ -121,7 +121,7 @@ class ThermostatStateMachine:
         clock_thread.start()
 
     def start_listening(self):
-        print("\n--- Listening for new events ---")
+        print("\n--- Starting listening ---")
         IoTCoreService.start_mqtt_thread()
         IoTCoreService.register_callback("temperatureRequests", self.on_temperature_request)
         IoTCoreService.register_callback("updatedScheduleRequests", self.on_updated_schedule_request)
@@ -255,8 +255,7 @@ class ThermostatStateMachine:
         instant_request_dt = datetime.strptime(self.instant_request_timestamp, '%Y-%m-%d %H:%M:%S')
         
         current_dt = datetime.strptime(f"{self.current_date} {self.current_time}", '%Y-%m-%d %H:%M:%S')
-        
-        days_of_week = ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY', 'SUNDAY']
+    
         current_day_index = datetime.strptime(self.current_date, '%Y-%m-%d').weekday()
         event_day_index = days_of_week.index(last_scheduled_event_day_of_the_week)
         
