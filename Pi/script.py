@@ -2,6 +2,7 @@
 
 from EC2Service import is_thermostat_paired, get_thermostat_schedule
 from InternetService import is_connected_to_internet, get_current_day_and_time
+from BluetoothService import turn_on_thermostat, turn_off_thermostat, get_thermostat_status
 import IoTCoreService
 import time
 from datetime import datetime, timedelta
@@ -31,6 +32,8 @@ class ThermostatStateMachine:
     def __init__(self):
         self.state = 'Init'
 
+        self.thermostatStatus = None
+
         self.targetTemp = 0
         self.environmentTemp = 0
 
@@ -55,6 +58,7 @@ class ThermostatStateMachine:
         if self.state == 'Init':
             self.check_internet()
             self.check_thermostat()
+            self.get_current_thermostat_status()
             self.get_current_time_day()
             self.start_clock_thread()
             self.start_listening()
@@ -98,6 +102,12 @@ class ThermostatStateMachine:
             else:
                 print("Thermostat is not paired")
             time.sleep(10)
+
+        
+    def get_current_thermostat_status(self):
+        print("\n--- Fetching current thermostat status ---")
+        self.thermostatStatus = get_thermostat_status()
+        print(f"Current thermostat status: {self.thermostatStatus}")
 
     
     def get_current_time_day(self):
@@ -305,10 +315,20 @@ class ThermostatStateMachine:
         print(f"Current temperature: {self.environmentTemp:.1f}")
         print(f"Target temperature: {self.targetTemp}")
 
-        if self.environmentTemp < self.targetTemp:
-            print(f"Setting thermostat to ON")
-        elif self.environmentTemp >= self.targetTemp:
-            print(f"Setting thermostat to OFF")
+        if float(self.environmentTemp) < float(self.targetTemp): # turn ON
+            if self.thermostatStatus == 'OFF':
+                print(f"Setting thermostat to ON")
+                self.thermostatStatus = 'ON'
+                turn_on_thermostat()
+            else:
+                print(f"Thermostat is already ON")
+        elif float(self.environmentTemp) >= float(self.targetTemp): # turn OFF
+            if self.thermostatStatus == 'ON':
+                print(f"Setting thermostat to OFF")
+                self.thermostatStatus = 'OFF'
+                turn_off_thermostat()
+            else:
+                print(f"Thermostat is already OFF")
 
         self.transition('ListeningForNewEvents')
 
