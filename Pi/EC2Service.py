@@ -1,15 +1,17 @@
 import re
 import uuid
 import requests
+import os
 
 thermostatId = None
+ec2_url = os.getenv("EC2_INSTANCE_URL")
 
 def get_mac_address():
     mac = ':'.join(re.findall('..', '%012x' % uuid.getnode()))
     return mac.upper()
 
 def get_thermostat_details(mac_address):
-    url = "http://3.67.226.8:8080/api/v1/thermostat/get-thermostat-by-mac-address"
+    url = ec2_url + "/api/v1/thermostat/get-thermostat-by-mac-address"
     params = {'macAddress': mac_address}
     response = requests.get(url, params=params)
     
@@ -20,10 +22,14 @@ def get_thermostat_details(mac_address):
 
 def is_thermostat_paired():
     global thermostatId
-
+    print("hello")
     try:
         mac_address = get_mac_address()
+        print("MAC Address: ", mac_address)
         response = get_thermostat_details(mac_address)
+
+
+        print("Response: ", response)
 
         if response.get('isPaired') == True:
             thermostatId = response.get('id')
@@ -47,7 +53,7 @@ def get_thermostat_id():
 
 def get_thermostat_schedule():
     try:
-        url = "http://3.67.226.8:8080/api/v1/thermostat/get-schedule-by-thermostat-id"
+        url = ec2_url + "/api/v1/thermostat/get-schedule-by-thermostat-id"
         params = {'thermostatId': thermostatId}
         response = requests.get(url, params=params)
         

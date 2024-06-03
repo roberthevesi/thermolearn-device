@@ -1,22 +1,18 @@
-# IoTCoreService.py
-
 from AWSIoTPythonSDK.MQTTLib import AWSIoTMQTTClient
+import paho.mqtt.client as paho
 import logging
 import os
 import threading
 import time
 import json
 
-# Initialize thermostatId
-thermostatId = None  # This will be set by an external function
+thermostatId = None  
 
-# Dictionary to store the latest messages from each topic
 latest_messages = {
     "temperatureRequests": None,
     "updatedScheduleRequests": None
 }
 
-# Dictionary to store the external callbacks for each topic
 external_callbacks = {
     "temperatureRequests": None,
     "updatedScheduleRequests": None
@@ -30,16 +26,13 @@ def customCallback(client, userdata, message):
 
     message_dict = json.loads(message.payload.decode('utf-8'))
     
-    # Determine which topic this message came from and update the respective entry in latest_messages
     for key, topic in TOPICS.items():
         if message.topic == topic:
             latest_messages[key] = message_dict
-            # Trigger the external callback if registered
             if external_callbacks[key]:
                 external_callbacks[key](message_dict)
             break
 
-# Configure the logger for AWSIoTPythonSDK
 logger = logging.getLogger("AWSIoTPythonSDK.core")
 logger.setLevel(logging.WARNING)
 
@@ -65,11 +58,9 @@ mqtt_client.configureMQTTOperationTimeout(5)
 def start_mqtt_client():
     global TOPICS
 
-    # Ensure thermostatId is set
     if not thermostatId:
         raise ValueError("thermostatId is not set")
 
-    # Define the topics to subscribe to using the thermostatId
     TOPICS = {
         "temperatureRequests": f"thermostats/{thermostatId}/temperatureRequests",
         "updatedScheduleRequests": f"thermostats/{thermostatId}/updatedScheduleRequests"
@@ -78,7 +69,6 @@ def start_mqtt_client():
     mqtt_client.connect()
     print("Connected to MQTT broker")
     
-    # Subscribe to all topics in the TOPICS dictionary
     for topic_name, topic in TOPICS.items():
         mqtt_client.subscribe(topic, 1, customCallback)
         print(f"Subscribed to topic: {topic}")
@@ -99,3 +89,31 @@ def register_callback(topic_name, callback):
         external_callbacks[topic_name] = callback
     else:
         raise ValueError(f"No such topic: {topic_name}")
+    
+# Paho MQTT client for handling retained messages
+paho_client = paho.Client()
+
+def on_connect(client, userdata, flags, rc):
+    print(f"Paho client connected with result code {rc}")
+
+paho_client.on_connect = on_connect
+paho_client.tls_set(root_ca, certfile=certificate, keyfile=private_key)
+paho_client.connect("amgaupjb9mzud-ats.iot.eu-central-1.amazonaws.com", 8883, 60)
+
+def publish_thermostat_status(ambientTemperature, heatingStatus, ambientHumidity):
+    if not thermostatId:
+        raise ValueError("thermostatId is not set")
+
+    topic = f"thermostats/{thermostatId}/status"
+    message = {
+        "ambientTemperature": ambientTemperature,
+        "heatingStatus": heatingStatus,
+        "ambientHumidity": ambientHumidity
+    }
+    
+    # Publish with Paho client and set retained=True
+    paho_client.publish(topic, json.dumps(message), qos=1, retain=True)
+    print(f"Published message to {topic}: {message}")
+
+# Ensure the Paho client loop runs in the background
+paho_client.loop_start()

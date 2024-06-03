@@ -1,5 +1,3 @@
-# script.py
-
 from EC2Service import is_thermostat_paired, get_thermostat_schedule
 from InternetService import is_connected_to_internet, get_current_day_and_time
 from BluetoothService import turn_on_thermostat, turn_off_thermostat, get_thermostat_status
@@ -36,6 +34,7 @@ class ThermostatStateMachine:
 
         self.targetTemp = 0
         self.environmentTemp = 0
+        self.environmentHumidity = 0
 
         self.current_day_of_week = None
         self.current_time = None
@@ -293,9 +292,13 @@ class ThermostatStateMachine:
         while max_tries:
             try:
                 temp = dht_device.temperature
-                if temp is not None:
+                humidity = dht_device.humidity
+
+                if temp is not None and humidity is not None:
                     self.environmentTemp = temp
+                    self.environmentHumidity = humidity
                     print(f"Current temperature: {self.environmentTemp:.1f}")
+                    print(f"Current humidity: {self.environmentHumidity:.1f}")
                     break
             except RuntimeError as e:
                 print(f"An error occurred: {e}")
@@ -330,6 +333,8 @@ class ThermostatStateMachine:
             else:
                 print(f"Thermostat is already OFF")
 
+        IoTCoreService.publish_thermostat_status(self.environmentTemp, self.thermostatStatus, self.environmentHumidity)
+
         self.transition('ListeningForNewEvents')
 
 
@@ -337,12 +342,23 @@ class ThermostatStateMachine:
 
     def listen_for_events(self):    
         print("\n--- Listening for new events ---")
-        # Implement the logic to listen for new events
+        # Implement logic to handle listening for new events
+        pass
+
+    def start_regular_temperature_check(self):
+        while True:
+            time.sleep(10)  # Check temperature every 30 seconds
+            self.transition('ReadingEnvironmentTemperature')
 
 
 if __name__ == "__main__":
     thermostat = ThermostatStateMachine()
     thermostat.run_state()
+
+    # Start a thread to regularly check the environment temperature
+    temperature_check_thread = threading.Thread(target=thermostat.start_regular_temperature_check)
+    temperature_check_thread.daemon = True
+    temperature_check_thread.start()
 
     while True:
         time.sleep(5)
