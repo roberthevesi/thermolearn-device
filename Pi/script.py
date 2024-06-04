@@ -8,6 +8,7 @@ import json
 import threading
 import adafruit_dht
 import board
+import math
 
 # DHT22 SETTINGS
 dht22_pin = board.D17
@@ -30,11 +31,15 @@ class ThermostatStateMachine:
     def __init__(self):
         self.state = 'Init'
 
-        self.thermostatStatus = None
 
         self.targetTemp = 0
         self.environmentTemp = 0
         self.environmentHumidity = 0
+        self.thermostatStatus = None
+
+        self.environmentTempAux = 0
+        self.environmentHumidityAux = 0
+        self.thermostatStatusAux = None
 
         self.current_day_of_week = None
         self.current_time = None
@@ -333,7 +338,17 @@ class ThermostatStateMachine:
             else:
                 print(f"Thermostat is already OFF")
 
-        IoTCoreService.publish_thermostat_status(self.environmentTemp, self.thermostatStatus, self.environmentHumidity)
+        if abs(self.environmentTempAux - self.environmentTemp) >= 0.2 or abs(self.environmentHumidityAux - self.environmentHumidity) > 0.5 or self.thermostatStatusAux != self.thermostatStatus:
+            print("Publishing thermostat status because there is new data...")
+            self.environmentTempAux = self.environmentTemp
+            self.environmentHumidityAux = self.environmentHumidity
+            self.thermostatStatusAux = self.thermostatStatus
+            IoTCoreService.publish_thermostat_status(self.environmentTemp, self.thermostatStatus, self.environmentHumidity)
+        else:
+            print("No new data to publish...")
+            
+
+        # IoTCoreService.publish_thermostat_status(self.environmentTemp, self.thermostatStatus, self.environmentHumidity)
 
         self.transition('ListeningForNewEvents')
 
@@ -342,12 +357,11 @@ class ThermostatStateMachine:
 
     def listen_for_events(self):    
         print("\n--- Listening for new events ---")
-        # Implement logic to handle listening for new events
         pass
 
     def start_regular_temperature_check(self):
         while True:
-            time.sleep(10)  # Check temperature every 30 seconds
+            time.sleep(30)  # Check temperature every 30 seconds
             self.transition('ReadingEnvironmentTemperature')
 
 
