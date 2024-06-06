@@ -2,6 +2,7 @@ import re
 import uuid
 import requests
 import os
+from datetime import datetime
 
 thermostatId = None
 ec2_url = os.getenv("EC2_INSTANCE_URL")
@@ -22,18 +23,15 @@ def get_thermostat_details(mac_address):
 
 def is_thermostat_paired():
     global thermostatId
-    print("hello")
     try:
         mac_address = get_mac_address()
         print("MAC Address: ", mac_address)
         response = get_thermostat_details(mac_address)
 
-
-        print("Response: ", response)
-
         if response.get('isPaired') == True:
             thermostatId = response.get('id')
             return response
+        
         if response.get('isPaired') == False:
             return False
 
@@ -59,6 +57,24 @@ def get_thermostat_schedule():
         
         if response.status_code == 200:
             return response.json()
+        else:
+            response.raise_for_status()
+    
+    except Exception as e:
+        print(f"An error occurred: {e}")
+
+def save_thermostat_status_log(status):
+    try:
+        url = ec2_url + "/api/v1/thermostat-log/save-log"
+        data = {
+            'thermostatId': thermostatId,
+            'status': status,
+            'timestamp': datetime.now().isoformat()
+        }
+        response = requests.post(url, json=data)
+        
+        if response.status_code == 200:
+            print("Thermostat status log saved successfully, with status:", status)
         else:
             response.raise_for_status()
     

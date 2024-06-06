@@ -1,4 +1,4 @@
-from EC2Service import is_thermostat_paired, get_thermostat_schedule
+from EC2Service import is_thermostat_paired, get_thermostat_schedule, save_thermostat_status_log
 from InternetService import is_connected_to_internet, get_current_day_and_time
 from BluetoothService import turn_on_thermostat, turn_off_thermostat, get_thermostat_status
 import IoTCoreService
@@ -327,6 +327,7 @@ class ThermostatStateMachine:
             if self.thermostatStatus == 'OFF':
                 print(f"Setting thermostat to ON")
                 self.thermostatStatus = 'ON'
+                save_thermostat_status_log('ON')
                 turn_on_thermostat()
             else:
                 print(f"Thermostat is already ON")
@@ -334,6 +335,7 @@ class ThermostatStateMachine:
             if self.thermostatStatus == 'ON':
                 print(f"Setting thermostat to OFF")
                 self.thermostatStatus = 'OFF'
+                save_thermostat_status_log('OFF')
                 turn_off_thermostat()
             else:
                 print(f"Thermostat is already OFF")
