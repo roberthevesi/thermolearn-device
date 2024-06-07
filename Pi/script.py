@@ -1,4 +1,4 @@
-from EC2Service import is_thermostat_paired, get_thermostat_schedule, save_thermostat_status_log
+from EC2Service import is_thermostat_paired, get_thermostat_schedule, save_thermostat_status_log, get_user_distance_from_home, get_lastest_user_log
 from InternetService import is_connected_to_internet, get_current_day_and_time
 from BluetoothService import turn_on_thermostat, turn_off_thermostat, get_thermostat_status
 import IoTCoreService
@@ -26,6 +26,8 @@ weekly_schedule = {
 }
 days_of_week = ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY', 'SUNDAY']
 
+DISTANCE_FROM_HOME_THRESHOLD = 20
+TARGET_TEMP_THRESHOLD = 22
 
 class ThermostatStateMachine:
     def __init__(self):
@@ -327,7 +329,7 @@ class ThermostatStateMachine:
             if self.thermostatStatus == 'OFF':
                 print(f"Setting thermostat to ON")
                 self.thermostatStatus = 'ON'
-                save_thermostat_status_log('ON')
+                save_thermostat_status_log('ON', self.environmentTemp, self.environmentHumidity)
                 turn_on_thermostat()
             else:
                 print(f"Thermostat is already ON")
@@ -335,7 +337,7 @@ class ThermostatStateMachine:
             if self.thermostatStatus == 'ON':
                 print(f"Setting thermostat to OFF")
                 self.thermostatStatus = 'OFF'
-                save_thermostat_status_log('OFF')
+                save_thermostat_status_log('OFF', self.environmentTemp, self.environmentHumidity)
                 turn_off_thermostat()
             else:
                 print(f"Thermostat is already OFF")
@@ -363,18 +365,60 @@ class ThermostatStateMachine:
 
     def start_regular_temperature_check(self):
         while True:
-            time.sleep(30)  # Check temperature every 30 seconds
+            time.sleep(30) # check temp every 30s
             self.transition('ReadingEnvironmentTemperature')
+
+    def start_regular_user_location_check(self):
+        while True:
+            time.sleep(5) # check temp every 2m
+            print("Checking user location...")
+
+            latest_user_log = get_lastest_user_log().get('eventType')
+            print("Latest user log: ", latest_user_log)
+            if latest_user_log == 'OUT':
+                distance_from_home = int(get_user_distance_from_home())
+                print("Distance from home: ", distance_from_home)
+                if distance_from_home > DISTANCE_FROM_HOME_THRESHOLD:
+                    if float(self.targetTemp) > TARGET_TEMP_THRESHOLD:
+                        # still have to check ML output
+                        print("Setting target temp to 21 for now...")
+                    else:
+                        print("Target temp is not high enough. No changes.")
+                else:
+                    print("User is near home. No changes.")
+            else:
+                print("User is at home. No changes.")
+
+
+
+            # distance_from_home = get_user_distance_from_home()
+            # print("Distance from home: ", distance_from_home)
+            # if distance_from_home > DISTANCE_FROM_HOME_THRESHOLD:
+            #     print("User is far from home. Turning off thermostat...")
+            #     if self.thermostatStatus == 'ON':
+            #         self.thermostatStatus = 'OFF'
+            #         save_thermostat_status_log('OFF', self.environmentTemp, self.environmentHumidity)
+            #         turn_off_thermostat()
+            # else:
+            #     print("User is near home. Turning on thermostat...")
+            #     if self.thermostatStatus == 'OFF':
+            #         self.thermostatStatus = 'ON'
+            #         save_thermostat_status_log('ON', self.environmentTemp, self.environmentHumidity)
+            #         turn_on_thermostat()
+
 
 
 if __name__ == "__main__":
     thermostat = ThermostatStateMachine()
     thermostat.run_state()
 
-    # Start a thread to regularly check the environment temperature
     temperature_check_thread = threading.Thread(target=thermostat.start_regular_temperature_check)
     temperature_check_thread.daemon = True
     temperature_check_thread.start()
+
+    user_location_check_thread = threading.Thread(target=thermostat.start_regular_user_location_check)
+    user_location_check_thread.daemon = True
+    user_location_check_thread.start()
 
     while True:
         time.sleep(5)
