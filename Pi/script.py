@@ -1,6 +1,7 @@
 from EC2Service import is_thermostat_paired, get_thermostat_schedule, save_thermostat_status_log, get_user_distance_from_home, get_lastest_user_log
 from InternetService import is_connected_to_internet, get_current_day_and_time
 from BluetoothService import turn_on_thermostat, turn_off_thermostat, get_thermostat_status
+from WiFiHotspotService import start_wifi_process
 
 from IncrementalModelUpdateService import update_model_periodically
 from PredictionService import predict_next_home_time
@@ -37,6 +38,7 @@ AWAY_FROM_HOME_COMFORT_TEMPERATURE = 21 # degrees Celsius
 class ThermostatStateMachine:
     def __init__(self):
         self.state = 'Init'
+        self.init_finished = False  # Flag to indicate initialization completion
 
         self.targetTemp = 0
         self.targetTempAux = 0
@@ -84,6 +86,11 @@ class ThermostatStateMachine:
         else:
             print(f"Unknown state: {self.state}")
 
+    def ensure_init_finished(self):
+        while not self.init_finished:
+            print("Waiting for initialization to complete...")
+            time.sleep(1)
+
     ######################## 0 - INIT STATE ########################
 
     def check_internet(self):
@@ -92,16 +99,24 @@ class ThermostatStateMachine:
             connected = is_connected_to_internet()
             if connected:
                 print("Thermostat is connected to the internet")
-                # self.transition('FetchingSchedule')
+                self.init_finished = True  # Initialization complete
                 break
             else:
                 print("Thermostat is not connected to the internet")
+                self.connect_to_internet()
             time.sleep(10)
+
+
+    def connect_to_internet(self):
+        print("\n--- Connecting to the internet ---")
+        start_wifi_process()
+        self.check_internet()
 
 
     def check_thermostat(self):
         global thermostatId
         print("\n--- Checking if thermostat is paired ---")
+        self.ensure_init_finished()
         while True:
             response = is_thermostat_paired()
             if response:
@@ -155,6 +170,7 @@ class ThermostatStateMachine:
 
     def start_listening(self):
         print("\n--- Starting listening ---")
+        IoTCoreService.start_iot_core_service()
         IoTCoreService.start_mqtt_thread()
         IoTCoreService.register_callback("temperatureRequests", self.on_temperature_request)
         IoTCoreService.register_callback("updatedScheduleRequests", self.on_updated_schedule_request)
@@ -206,13 +222,14 @@ class ThermostatStateMachine:
                     'startTime': entry['startTime'],
                     'desiredTemperature': entry['desiredTemperature']
                 })
-
+                
 
     ######################## 1 - ComparingRequests STATE ########################
 
     def compare_requests(self):
         print("\n--- Comparing manual request with scheduled events ---")
 
+        self.fetch_schedule()
         last_scheduled_event = self.get_last_scheduled_event()
         print("last_scheduled_event: ", last_scheduled_event)
         is_within_one_week = self.is_request_within_one_week(self.instant_request_timestamp)
@@ -249,13 +266,16 @@ class ThermostatStateMachine:
                 
             self.transition('ReadingEnvironmentTemperature')
 
+
     def sort_weekly_schedule_descending(self):
         for day, events in weekly_schedule.items():
             events.sort(key=lambda x: x['startTime'], reverse=True)
         return weekly_schedule
 
+
     def get_last_scheduled_event(self):
         self.sort_weekly_schedule_descending()
+        print(weekly_schedule)
         most_recent_event = None
         
         for day_offset in range(7):
@@ -466,6 +486,11 @@ class ThermostatStateMachine:
 if __name__ == "__main__":
     thermostat = ThermostatStateMachine()
     thermostat.run_state()
+
+    print("@@@@@@@@@@@@@@@@@@@@BEFORE")
+    # Ensure initialization is complete before starting threads
+    thermostat.ensure_init_finished()
+    print("@@@@@@@@@@@@@@@@@@@@AFTER")
 
     regular_temperature_check_thread = threading.Thread(target=thermostat.start_regular_temperature_check)
     regular_temperature_check_thread.daemon = True

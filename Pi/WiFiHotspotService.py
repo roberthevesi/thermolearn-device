@@ -1,16 +1,32 @@
+import subprocess
 import os
 import time
-import subprocess
 import requests
 import json
 from WiFiHotspotServer import start_server, credentials, wait_for_shutdown, shutdown_event
-from WiFiHotspotService import start_hotspot, stop_hotspot
 
 CONFIG_FILE = 'wifi_credentials.json'
+
+def start_hotspot():
+    try:
+        subprocess.run(['sudo', 'systemctl', 'start', 'start_wifi_hotspot.service'], check=True)
+        print("Hotspot service started successfully.")
+    except subprocess.CalledProcessError as e:
+        print(f"Failed to start hotspot service: {e}")
+
+
+def stop_hotspot():
+    try:
+        subprocess.run(['sudo', 'systemctl', 'start', 'stop_wifi_hotspot.service'], check=True)
+        print("Hotspot service stopped successfully.")
+    except subprocess.CalledProcessError as e:
+        print(f"Failed to stop hotspot service: {e}")
+
 
 def save_credentials(ssid, password):
     with open(CONFIG_FILE, 'w') as f:
         json.dump({'ssid': ssid, 'password': password}, f)
+
 
 def load_credentials():
     if os.path.exists(CONFIG_FILE):
@@ -18,6 +34,7 @@ def load_credentials():
             creds = json.load(f)
             return creds.get('ssid'), creds.get('password')
     return None, None
+
 
 def connect_to_wifi(ssid, password):
     try:
@@ -33,7 +50,8 @@ def connect_to_wifi(ssid, password):
         print(f"Error occurred while connecting to WiFi: {e}")
         return False
 
-def main():
+
+def start_wifi_process():
     # Load credentials from the configuration file
     ssid, password = load_credentials()
 
@@ -77,5 +95,5 @@ def main():
     requests.post('http://127.0.0.1:5000/shutdown')
     wait_for_shutdown()
 
-if __name__ == '__main__':
-    main()
+# if __name__ == '__main__':
+#     start_wifi_process()

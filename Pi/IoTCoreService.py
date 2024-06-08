@@ -5,6 +5,7 @@ import os
 import threading
 import time
 import json
+from InternetService import is_connected_to_internet
 
 thermostatId = None  
 
@@ -55,6 +56,7 @@ mqtt_client.configureDrainingFrequency(2)
 mqtt_client.configureConnectDisconnectTimeout(10)
 mqtt_client.configureMQTTOperationTimeout(5)
 
+
 def start_mqtt_client():
     global TOPICS
 
@@ -76,13 +78,16 @@ def start_mqtt_client():
     while True:
         time.sleep(5)
 
+
 def start_mqtt_thread():
     mqtt_thread = threading.Thread(target=start_mqtt_client)
     mqtt_thread.daemon = True
     mqtt_thread.start()
 
+
 def get_latest_message(topic_name):
     return latest_messages.get(topic_name)
+
 
 def register_callback(topic_name, callback):
     if topic_name in external_callbacks:
@@ -90,7 +95,7 @@ def register_callback(topic_name, callback):
     else:
         raise ValueError(f"No such topic: {topic_name}")
     
-# Paho MQTT client for handling retained messages
+
 paho_client = paho.Client()
 
 def on_connect(client, userdata, flags, rc):
@@ -98,7 +103,7 @@ def on_connect(client, userdata, flags, rc):
 
 paho_client.on_connect = on_connect
 paho_client.tls_set(root_ca, certfile=certificate, keyfile=private_key)
-paho_client.connect("amgaupjb9mzud-ats.iot.eu-central-1.amazonaws.com", 8883, 60)
+
 
 def publish_thermostat_status(ambientTemperature, heatingStatus, ambientHumidity):
     if not thermostatId:
@@ -111,9 +116,9 @@ def publish_thermostat_status(ambientTemperature, heatingStatus, ambientHumidity
         "ambientHumidity": ambientHumidity
     }
     
-    # Publish with Paho client and set retained=True
     paho_client.publish(topic, json.dumps(message), qos=1, retain=True)
     print(f"Published message to {topic}: {message}")
 
-# Ensure the Paho client loop runs in the background
-paho_client.loop_start()
+def start_iot_core_service():
+    paho_client.connect("amgaupjb9mzud-ats.iot.eu-central-1.amazonaws.com", 8883, 60)
+    paho_client.loop_start()
