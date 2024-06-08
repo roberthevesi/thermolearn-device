@@ -52,7 +52,6 @@ def connect_to_wifi(ssid, password):
 
 
 def start_wifi_process():
-    # Load credentials from the configuration file
     ssid, password = load_credentials()
 
     if ssid and password:
@@ -63,10 +62,8 @@ def start_wifi_process():
         else:
             print("Failed to connect with provided credentials. Starting server to get new credentials.")
 
-    # Start the local hotspot
     start_hotspot()
 
-    # Start the Flask server to get new credentials
     start_server()
     print("Server started")
 
@@ -79,21 +76,15 @@ def start_wifi_process():
                 stop_hotspot()
                 if connect_to_wifi(ssid, password):
                     print("Successfully connected to WiFi.")
-                    # Save the credentials to the configuration file
                     save_credentials(ssid, password)
                     break
                 else:
                     print("Failed to connect. Restarting hotspot to wait for new credentials...")
                     start_hotspot()
-                    credentials.clear()  # Clear credentials to wait for new ones
+                    credentials.clear()
 
-        # Wait for a short period before checking for new credentials
         time.sleep(5)
 
-    # Signal the Flask server to shut down
     print("Stopping the server.")
     requests.post('http://127.0.0.1:5000/shutdown')
     wait_for_shutdown()
-
-# if __name__ == '__main__':
-#     start_wifi_process()

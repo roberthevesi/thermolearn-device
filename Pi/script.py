@@ -99,7 +99,7 @@ class ThermostatStateMachine:
             connected = is_connected_to_internet()
             if connected:
                 print("Thermostat is connected to the internet")
-                self.init_finished = True  # Initialization complete
+                self.init_finished = True
                 break
             else:
                 print("Thermostat is not connected to the internet")
@@ -187,7 +187,6 @@ class ThermostatStateMachine:
 
         if self.init_finished is not False:
             self.transition('ComparingRequests')
-        # self.transition('ListeningForNewEvents')
         
 
     def on_updated_schedule_request(self, message):
@@ -487,10 +486,7 @@ if __name__ == "__main__":
     thermostat = ThermostatStateMachine()
     thermostat.run_state()
 
-    print("@@@@@@@@@@@@@@@@@@@@BEFORE")
-    # Ensure initialization is complete before starting threads
     thermostat.ensure_init_finished()
-    print("@@@@@@@@@@@@@@@@@@@@AFTER")
 
     regular_temperature_check_thread = threading.Thread(target=thermostat.start_regular_temperature_check)
     regular_temperature_check_thread.daemon = True

@@ -28,7 +28,7 @@ def shutdown():
     return 'Server shutting down...'
 
 def run_server():
-    app.run(host='0.0.0.0', port=5000)  # Bind to all interfaces
+    app.run(host='0.0.0.0', port=5000)
 
 def start_server():
     server_thread = Thread(target=run_server)
