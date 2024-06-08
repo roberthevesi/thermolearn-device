@@ -422,7 +422,7 @@ class ThermostatStateMachine:
                         time_difference = next_home_time - self.current_datetime
 
                         if time_difference > timedelta(hours=NEXT_TIME_HOME_THRESHOLD):
-                            print("User won't be home in the next 2 hours.")
+                            print(f"User won't be home in the next {NEXT_TIME_HOME_THRESHOLD} hours.")
                             if self.targetTempAux == 0:
                                 self.targetTempAux = self.targetTemp
                                 self.targetTemp = AWAY_FROM_HOME_COMFORT_TEMPERATURE
