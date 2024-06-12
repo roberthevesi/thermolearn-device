@@ -3,13 +3,47 @@ import uuid
 import requests
 import os
 from datetime import datetime
+# from WiFiHotspotService import load_fingerprint
+import WiFiHotspotService
 
 thermostatId = None
 ec2_url = os.getenv("EC2_INSTANCE_URL")
 
+
 def get_mac_address():
     mac = ':'.join(re.findall('..', '%012x' % uuid.getnode()))
     return mac.upper()
+
+
+def set_thermostat_fingerprint():
+    try:
+        fingerprint = WiFiHotspotService.load_fingerprint()
+        print("FINGERPRINT: ", fingerprint)
+
+        mac_address = get_mac_address()
+        # print("MAC Address: ", mac_address)
+        response = get_thermostat_details(mac_address)
+
+        if response.get('isPaired') == False:
+            thermostatId = response.get('id')
+
+            print("THERMOSTAT ID: ", thermostatId)
+
+            url = ec2_url + "/api/v1/thermostat/set-thermostat-fingerprint"
+            params = {
+                'thermostatId': thermostatId,
+                'fingerprint': fingerprint
+            }
+            response = requests.post(url, params=params)
+            
+            if response.status_code == 200:
+                print("Thermostat fingerprint set successfully")
+            else:
+                response.raise_for_status()
+    
+    except Exception as e:
+        print(f"An error occurred: {e}")
+
 
 def get_thermostat_details(mac_address):
     url = ec2_url + "/api/v1/thermostat/get-thermostat-by-mac-address"
@@ -20,6 +54,7 @@ def get_thermostat_details(mac_address):
         return response.json()
     else:
         response.raise_for_status()
+
 
 def is_thermostat_paired():
     global thermostatId
@@ -40,6 +75,7 @@ def is_thermostat_paired():
     except Exception as e:
         print(f"An error occurred: {e}")
 
+
 def get_thermostat_id():
     try:
         mac_address = get_mac_address()
@@ -48,6 +84,7 @@ def get_thermostat_id():
     
     except Exception as e:
         print(f"An error occurred: {e}")
+
 
 def get_thermostat_schedule():
     try:
@@ -62,6 +99,7 @@ def get_thermostat_schedule():
     
     except Exception as e:
         print(f"An error occurred: {e}")
+
 
 def save_thermostat_status_log(status, temperature, humidity):
     try:
@@ -83,6 +121,7 @@ def save_thermostat_status_log(status, temperature, humidity):
     except Exception as e:
         print(f"An error occurred: {e}")
 
+
 def get_lastest_user_log():
     try:
         url = ec2_url + "/api/v1/log/get-latest-user-log-by-thermostat-id"
@@ -98,6 +137,7 @@ def get_lastest_user_log():
     
     except Exception as e:
         print(f"An error occurred: {e}")
+
 
 def get_user_distance_from_home():
     try:

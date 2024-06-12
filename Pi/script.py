@@ -1,4 +1,4 @@
-from EC2Service import is_thermostat_paired, get_thermostat_schedule, save_thermostat_status_log, get_user_distance_from_home, get_lastest_user_log
+from EC2Service import is_thermostat_paired, get_thermostat_schedule, save_thermostat_status_log, get_user_distance_from_home, get_lastest_user_log, set_thermostat_fingerprint
 from InternetService import is_connected_to_internet, get_current_day_and_time
 from BluetoothService import turn_on_thermostat, turn_off_thermostat, get_thermostat_status
 from WiFiHotspotService import start_wifi_process
@@ -99,6 +99,7 @@ class ThermostatStateMachine:
             connected = is_connected_to_internet()
             if connected:
                 print("Thermostat is connected to the internet")
+                set_thermostat_fingerprint()
                 self.init_finished = True
                 break
             else:

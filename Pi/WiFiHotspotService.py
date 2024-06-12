@@ -6,6 +6,7 @@ import json
 from WiFiHotspotServer import start_server, credentials, wait_for_shutdown, shutdown_event
 
 CONFIG_FILE = 'wifi_credentials.json'
+FINGERPRINT_FILE = 'fingerprint.json'
 
 def start_hotspot():
     try:
@@ -26,6 +27,19 @@ def stop_hotspot():
 def save_credentials(ssid, password):
     with open(CONFIG_FILE, 'w') as f:
         json.dump({'ssid': ssid, 'password': password}, f)
+
+
+def save_fingerprint(fingerprint):
+    with open(FINGERPRINT_FILE, 'w') as f:
+        json.dump({'fingerprint': fingerprint}, f)
+
+
+def load_fingerprint():
+    if os.path.exists(FINGERPRINT_FILE):
+        with open(FINGERPRINT_FILE, 'r') as f:
+            creds = json.load(f)
+            return creds.get('fingerprint')
+    return None
 
 
 def load_credentials():
@@ -71,12 +85,14 @@ def start_wifi_process():
         if credentials:
             ssid = credentials.get('ssid')
             password = credentials.get('password')
+            fingerprint = credentials.get('fingerprint')
             if ssid and password:
                 print(f"Attempting to connect to WiFi: SSID={ssid}")
                 stop_hotspot()
                 if connect_to_wifi(ssid, password):
                     print("Successfully connected to WiFi.")
                     save_credentials(ssid, password)
+                    save_fingerprint(fingerprint)
                     break
                 else:
                     print("Failed to connect. Restarting hotspot to wait for new credentials...")
