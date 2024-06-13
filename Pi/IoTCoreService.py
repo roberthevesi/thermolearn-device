@@ -11,12 +11,14 @@ thermostatId = None
 
 latest_messages = {
     "temperatureRequests": None,
-    "updatedScheduleRequests": None
+    "updatedScheduleRequests": None,
+    "unpairRequests": None
 }
 
 external_callbacks = {
     "temperatureRequests": None,
-    "updatedScheduleRequests": None
+    "updatedScheduleRequests": None,
+    "unpairRequests": None
 }
 
 def customCallback(client, userdata, message):
@@ -65,7 +67,8 @@ def start_mqtt_client():
 
     TOPICS = {
         "temperatureRequests": f"thermostats/{thermostatId}/temperatureRequests",
-        "updatedScheduleRequests": f"thermostats/{thermostatId}/updatedScheduleRequests"
+        "updatedScheduleRequests": f"thermostats/{thermostatId}/updatedScheduleRequests",
+        "unpairRequests": f"thermostats/{thermostatId}/unpairRequests"
     }
     
     mqtt_client.connect()

@@ -1,7 +1,7 @@
 from EC2Service import is_thermostat_paired, get_thermostat_schedule, save_thermostat_status_log, get_user_distance_from_home, get_lastest_user_log, set_thermostat_fingerprint
 from InternetService import is_connected_to_internet, get_current_day_and_time
 from BluetoothService import turn_on_thermostat, turn_off_thermostat, get_thermostat_status
-from WiFiHotspotService import start_wifi_process
+from WiFiHotspotService import start_wifi_process, delete_credentials, disconnect_from_wifi
 
 from IncrementalModelUpdateService import update_model_periodically
 from PredictionService import predict_next_home_time
@@ -83,6 +83,8 @@ class ThermostatStateMachine:
             self.set_target_temperature()
         elif self.state == 'ListeningForNewEvents':
             self.listen_for_events()
+        elif self.state == 'Unpairing':
+            self.unpair_thermostat()
         else:
             print(f"Unknown state: {self.state}")
 
@@ -175,6 +177,7 @@ class ThermostatStateMachine:
         IoTCoreService.start_mqtt_thread()
         IoTCoreService.register_callback("temperatureRequests", self.on_temperature_request)
         IoTCoreService.register_callback("updatedScheduleRequests", self.on_updated_schedule_request)
+        IoTCoreService.register_callback("unpairRequests", self.on_unpair_request)
 
         time.sleep(2)
         self.init_finished = True
@@ -196,6 +199,16 @@ class ThermostatStateMachine:
 
         if self.init_finished is not False:
             self.transition('ComparingRequests')
+
+
+    def on_unpair_request(self, message):
+        print("Action: Processing unpair request", message)
+        time_difference = self.current_datetime - datetime.strptime(message.get('timestamp'), '%Y-%m-%d %H:%M:%S')
+        if time_difference <= timedelta(minutes=1):
+            print("Unpairing thermostat...")
+            self.transition('Unpairing')
+        else:
+            print("Unpair request is too old.")
 
 
     def fetch_schedule(self):
@@ -408,6 +421,20 @@ class ThermostatStateMachine:
     def listen_for_events(self):    
         print("\n--- Listening for new events ---")
         pass
+
+
+    ######################## 5 - Unpairing STATE ########################
+
+    def unpair_thermostat(self):
+        print("\n--- Unpairing thermostat ---")
+        try:
+            delete_credentials()
+            disconnect_from_wifi()
+            print("Unpairing successful.")
+            self.init_finished = False
+            self.transition('Init')
+        except Exception as e:
+            print(f"Error occurred while unpairing thermostat: {e}")
 
 
     ######################## REGULAR TEMPERATURE CHECK THREAD ########################
