@@ -8,12 +8,13 @@ from PredictionService import predict_next_home_time
 
 import IoTCoreService
 import time
+from dateutil import parser
+from dateutil.tz import gettz, UTC
 from datetime import datetime, timedelta
-import json
 import threading
 import adafruit_dht
 import board
-import math
+import pytz
 
 # DHT22 SETTINGS
 dht22_pin = board.D17
@@ -56,6 +57,7 @@ class ThermostatStateMachine:
         self.current_day_index = None
         self.current_datetime = None
         self.current_date = None
+        self.current_timezone = None
 
         self.instant_request_desiredTemp = None
         self.instant_request_timestamp = None
@@ -140,7 +142,7 @@ class ThermostatStateMachine:
     
     def get_current_time_day(self):
         print("\n--- Fetching current time and day ---")
-        self.current_day_of_week, self.current_time, self.current_date = get_current_day_and_time()
+        self.current_day_of_week, self.current_time, self.current_date, self.current_timezone = get_current_day_and_time()
         self.current_day_index = days_of_week.index(self.current_day_of_week)
 
         date_part = datetime.strptime(self.current_date, '%Y-%m-%d').date()
@@ -203,12 +205,33 @@ class ThermostatStateMachine:
 
     def on_unpair_request(self, message):
         print("Action: Processing unpair request", message)
-        time_difference = self.current_datetime - datetime.strptime(message.get('timestamp'), '%Y-%m-%d %H:%M:%S')
+        
+        # Parse the timestamp from the message including the timezone
+        timestamp_str = message.get('timestamp')
+        message_timestamp = parser.parse(timestamp_str)
+
+        # Ensure current datetime is timezone aware and in UTC
+        current_time_with_utc = self.current_datetime.astimezone(UTC)
+        
+        # Convert message timestamp to UTC for comparison
+        message_timestamp_utc = message_timestamp.astimezone(UTC)
+        
+        # Calculate the time difference
+        time_difference = current_time_with_utc - message_timestamp_utc
+        print("current time with utc: ", current_time_with_utc)
+        print("message timestamp with utc: ", message_timestamp_utc)
+        
+        # Process unpair request based on time difference
         if time_difference <= timedelta(minutes=1):
             print("Unpairing thermostat...")
             self.transition('Unpairing')
         else:
             print("Unpair request is too old.")
+        
+        # Print time difference for debugging
+        print(f"Time difference between the request and local: {time_difference}")
+
+
 
 
     def fetch_schedule(self):
@@ -420,7 +443,7 @@ class ThermostatStateMachine:
 
     def listen_for_events(self):    
         print("\n--- Listening for new events ---")
-        pass
+        pass  
 
 
     ######################## 5 - Unpairing STATE ########################
@@ -510,7 +533,7 @@ class ThermostatStateMachine:
             update_model_periodically()
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":    
     thermostat = ThermostatStateMachine()
     thermostat.run_state()
 

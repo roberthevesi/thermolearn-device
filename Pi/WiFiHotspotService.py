@@ -10,7 +10,7 @@ FINGERPRINT_FILE = 'fingerprint.json'
 
 def start_hotspot():
     try:
-        subprocess.run(['nmcli', 'radio', 'wifi', 'on'], check=True) # turn on wifi
+        subprocess.run(['sudo', 'nmcli', 'radio', 'wifi', 'on'], check=True) # turn on wifi
         subprocess.run(['sudo', 'systemctl', 'start', 'start_wifi_hotspot.service'], check=True)
         print("Hotspot service started successfully.")
     except subprocess.CalledProcessError as e:
@@ -73,9 +73,11 @@ def delete_credentials():
 
 
 def disconnect_from_wifi():
-    command = 'nmcli radio wifi off'
-    subprocess.run(command, shell=True, check=True)
-    print("Disconnected from WiFi")
+    try:
+        subprocess.run(['sudo', 'nmcli', 'radio', 'wifi', 'off'], check=True) 
+        print("Disconnected from WiFi")
+    except subprocess.CalledProcessError as e:
+        print(f"Error occurred while disconnecting from WiFi: {e}")
 
 
 def start_wifi_process():
@@ -88,6 +90,8 @@ def start_wifi_process():
             return
         else:
             print("Failed to connect with provided credentials. Starting server to get new credentials.")
+    else:
+        print("No credentials found in configuration file. Starting server to get new credentials.")
 
     start_hotspot()
 
